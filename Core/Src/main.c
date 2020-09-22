@@ -266,9 +266,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 84;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -512,7 +512,7 @@ void beep_task(void *argument)
     	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
 		continue;
 	}
-    if ( Distance <= threshold + 5) {
+    if (Distance >= threshold - 50 && Distance <= threshold + 5) {
     	state = 1;
     } else {
     	state = 0;
@@ -533,12 +533,15 @@ void temp_thread(void *argument)
 {
   /* USER CODE BEGIN temp_thread */
   /* Infinite loop */
+  char buffer[100];
   while(1)
   {
 	  DHT_GetData(&DHT11_Data);
 	  Temperature = DHT11_Data.Temperature;
 	  Humidity = DHT11_Data.Humidity;
-	  osDelay(3000);
+// 	  sprintf(buffer, "Tmp: %.2f \r\n",  Temperature);
+//  	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
+	  osDelay(5000);
   }
   /* USER CODE END temp_thread */
 }
@@ -596,6 +599,7 @@ void debug_task(void *argument)
 {
   /* USER CODE BEGIN debug_task */
   /* Infinite loop */
+ char buffer[100];
   for(;;)
   {
 //	  sprintf(buffer, "State: %d, Dist %d, Threshold %d, Tmp %.2f, Hum %.2f \r\n", state, Distance, threshold, Temperature, Humidity);
