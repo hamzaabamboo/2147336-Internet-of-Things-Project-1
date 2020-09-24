@@ -604,7 +604,8 @@ void debug_task(void *argument)
   {
 //	  sprintf(buffer, "State: %d, Dist %d, Threshold %d, Tmp %.2f, Hum %.2f \r\n", state, Distance, threshold, Temperature, Humidity);
 //	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 500);
-  	  sprintf(buffer, "Distance: %d, Threshold: %d \r\n", Distance, threshold);
+  	  // sprintf(buffer, "Distance: %d, Threshold: %d \r\n", Distance, threshold);
+  	  sprintf(buffer, "State: %d, Dist: %d, Threshold: %d, Tmp: %.2d, Hum: %.2d \r\n", state, Distance, threshold, (int) Temperature, (int) Humidity);
   	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
 	  osDelay(2000);
   }

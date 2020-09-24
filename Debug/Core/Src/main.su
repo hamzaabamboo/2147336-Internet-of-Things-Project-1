@@ -11,6 +11,6 @@ main.c:504:6:beep_task	16	static
 main.c:532:6:temp_thread	120	static
 main.c:556:6:threshold_adjust_thread	24	static
 main.c:579:6:ultrasonic_thread	16	static
-main.c:598:6:debug_task	120	static
-main.c:622:6:HAL_TIM_PeriodElapsedCallback	16	static
-main.c:639:6:Error_Handler	4	static
+main.c:598:6:debug_task	144	static
+main.c:623:6:HAL_TIM_PeriodElapsedCallback	16	static
+main.c:640:6:Error_Handler	4	static
