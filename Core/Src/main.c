@@ -42,8 +42,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
@@ -99,18 +101,30 @@ uint8_t Distance  = 0;
 
 char buffer[100];
 
-int threshold = 10;
 
+uint32_t adc_val[2];
+
+int threshold = 10;
+int range = 50;
 int state = 0;
+
+uint8_t Rh_byte1, Rh_byte2, Temp_byte1, Temp_byte2;
+uint16_t SUM, RH, TEMP;
+
+DHT_DataTypedef DHT11_Data;
+float Temperature = 0;
+float Humidity = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
 void beep_task(void *argument);
 void temp_thread(void *argument);
@@ -132,13 +146,6 @@ void delay (uint16_t time)
 
 #define DHT11_PORT GPIOA
 #define DHT11_PIN GPIO_PIN_8
-
-uint8_t Rh_byte1, Rh_byte2, Temp_byte1, Temp_byte2;
-uint16_t SUM, RH, TEMP;
-
-DHT_DataTypedef DHT11_Data;
-float Temperature = 0;
-float Humidity = 0;
 
 void HCSR04_Read (void)
 {
@@ -180,11 +187,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   MX_ADC1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_ADC_Start_DMA(&hadc1, adc_val, 2);
+  HAL_TIM_Base_Start(&htim3);
   HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
@@ -312,13 +322,13 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -329,6 +339,14 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_7;
+  sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -388,6 +406,54 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 8400;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 100;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_OC_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -417,6 +483,22 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 
@@ -512,7 +594,7 @@ void beep_task(void *argument)
     	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
 		continue;
 	}
-    if (Distance >= threshold - 50 && Distance <= threshold + 5) {
+    if (Distance >= threshold - range && Distance < threshold + 5 || Distance > 240) {
     	state = 1;
     } else {
     	state = 0;
@@ -533,14 +615,11 @@ void temp_thread(void *argument)
 {
   /* USER CODE BEGIN temp_thread */
   /* Infinite loop */
-  char buffer[100];
   while(1)
   {
 	  DHT_GetData(&DHT11_Data);
 	  Temperature = DHT11_Data.Temperature;
-	  Humidity = DHT11_Data.Humidity;
-// 	  sprintf(buffer, "Tmp: %.2f \r\n",  Temperature);
-//  	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
+	  Humidity = DHT11_Data.Humidity;;
 	  osDelay(5000);
   }
   /* USER CODE END temp_thread */
@@ -556,15 +635,13 @@ void temp_thread(void *argument)
 void threshold_adjust_thread(void *argument)
 {
   /* USER CODE BEGIN threshold_adjust_thread */
-  HAL_ADC_Start(&hadc1);
   /* Infinite loop */
+//  HAL_ADC_Start_DMA(&hadc1, adc_val, 2);
   while(1)
   {
-	 if (HAL_ADC_PollForConversion(&hadc1, 1000) == HAL_OK) {
-		  int ret = HAL_ADC_GetValue(&hadc1);
-		 threshold = (((float) ret/4096) * 200 + 10);
-	 }
-	  osDelay(1000);
+	  threshold = (((float) adc_val[0]/4096) * 200 + 10);
+	  range = (((float) adc_val[1]/4096) * 100 + 10);
+	  osDelay(300);
   }
   /* USER CODE END threshold_adjust_thread */
 }
@@ -605,7 +682,7 @@ void debug_task(void *argument)
 //	  sprintf(buffer, "State: %d, Dist %d, Threshold %d, Tmp %.2f, Hum %.2f \r\n", state, Distance, threshold, Temperature, Humidity);
 //	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 500);
   	  // sprintf(buffer, "Distance: %d, Threshold: %d \r\n", Distance, threshold);
-  	  sprintf(buffer, "State: %d, Dist: %d, Threshold: %d, Tmp: %.2d, Hum: %.2d \r\n", state, Distance, threshold, (int) Temperature, (int) Humidity);
+  	  sprintf(buffer, "State: %d, Dist: %d, Threshold: %d, Range, %d, Tmp: %.2d, Hum: %.2d \r\n", state, Distance, threshold, range, (int) Temperature, (int) Humidity);
   	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
 	  osDelay(2000);
   }
