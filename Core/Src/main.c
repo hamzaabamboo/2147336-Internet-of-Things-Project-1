@@ -594,10 +594,10 @@ void beep_task(void *argument)
     	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
 		continue;
 	}
-    if (Distance >= threshold - range && Distance < threshold + 5 || Distance > 240) {
-    	state = 1;
-    } else {
+    if (Distance >= threshold - range && Distance <= threshold + range) {
     	state = 0;
+    } else {
+    	state = 1;
     }
     osDelay(50);
   }
