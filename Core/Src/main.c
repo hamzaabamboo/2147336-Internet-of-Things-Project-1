@@ -107,6 +107,7 @@ uint32_t adc_val[2];
 int threshold = 10;
 int range = 50;
 int state = 0;
+int direction = 0;
 
 uint8_t Rh_byte1, Rh_byte2, Temp_byte1, Temp_byte2;
 uint16_t SUM, RH, TEMP;
@@ -533,11 +534,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : DHT11_Pin */
-  GPIO_InitStruct.Pin = DHT11_Pin;
+  /*Configure GPIO pins : DHT11_Pin PA10 */
+  GPIO_InitStruct.Pin = DHT11_Pin|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DHT11_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
@@ -589,16 +590,24 @@ void beep_task(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	direction = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10);
 	if (Temperature > 28 || Distance == 0) {
     	state = 0;
     	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
 		continue;
 	}
-    if (Distance >= threshold - range && Distance < threshold + 5 || Distance > 240) {
-    	state = 1;
-    } else {
-    	state = 0;
-    }
+	if (direction == 1) {
+		if (Distance <= threshold - 5 && Distance >= threshold - range || Distance > threshold + 10) {
+			state = 1;
+			continue;
+		}
+	} else {
+		if (Distance >= threshold + 5 && Distance <= threshold + range || Distance > threshold + range + 10) {
+			state = 1;
+			continue;
+		}
+	}
+	state = 0;
     osDelay(50);
   }
   /* USER CODE END beep_task */
@@ -639,9 +648,9 @@ void threshold_adjust_thread(void *argument)
 //  HAL_ADC_Start_DMA(&hadc1, adc_val, 2);
   while(1)
   {
-	  threshold = (((float) adc_val[0]/4096) * 200 + 10);
-	  range = (((float) adc_val[1]/4096) * 100 + 10);
-	  osDelay(300);
+	  threshold = (((float) adc_val[0]/4096) * 250 + 10);
+	  range = (((float) adc_val[1]/4096) * 200 + 10);
+	  osDelay(100);
   }
   /* USER CODE END threshold_adjust_thread */
 }
@@ -676,13 +685,12 @@ void debug_task(void *argument)
 {
   /* USER CODE BEGIN debug_task */
   /* Infinite loop */
- char buffer[100];
   for(;;)
   {
 //	  sprintf(buffer, "State: %d, Dist %d, Threshold %d, Tmp %.2f, Hum %.2f \r\n", state, Distance, threshold, Temperature, Humidity);
 //	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 500);
   	  // sprintf(buffer, "Distance: %d, Threshold: %d \r\n", Distance, threshold);
-  	  sprintf(buffer, "State: %d, Dist: %d, Threshold: %d, Range, %d, Tmp: %.2d, Hum: %.2d \r\n", state, Distance, threshold, range, (int) Temperature, (int) Humidity);
+  	  sprintf(buffer, "State: %d, Dir: %d, Dist: %d, Threshold: %d, Range, %d, Tmp: %.2d, Hum: %.2d \r\n", state, direction, Distance, threshold, range, (int) Temperature, (int) Humidity);
   	  HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
 	  osDelay(2000);
   }

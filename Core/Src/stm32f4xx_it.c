@@ -187,7 +187,6 @@ void TIM2_IRQHandler(void)
   /* USER CODE BEGIN TIM2_IRQn 0 */
 //	if (&htim2.Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // if the interrupt source is channel1
 //	{
-		 char buffer[100];
 		if (Is_First_Captured==0) // if the first value is not captured
 		{
 			IC_Val1 = HAL_TIM_ReadCapturedValue(&htim2, TIM_CHANNEL_1); // read the first value
@@ -218,8 +217,6 @@ void TIM2_IRQHandler(void)
 			__HAL_TIM_SET_CAPTUREPOLARITY(&htim2, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
 			__HAL_TIM_DISABLE_IT(&htim2, TIM_IT_CC1);
 		}
-//		 sprintf(buffer, "IFC %d Val1 %d Val2 %d \r\n", Is_First_Captured, IC_Val1, IC_Val2);
-//		HAL_UART_Transmit(&huart2, buffer, strlen(buffer), 1000);
 //	}
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
